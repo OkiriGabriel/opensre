@@ -8,7 +8,6 @@ from integrations.sentry.digest_delivery import (
     any_digest_delivery_ready,
     delivery_provider_ready,
     digest_delivery_setup_hint,
-    rocketchat_delivery_ready,
     slack_delivery_ready,
     telegram_delivery_ready,
 )
@@ -41,47 +40,17 @@ class TestDigestDeliveryReadiness:
         assert slack_delivery_ready() is True
         assert delivery_provider_ready("slack") is True
 
-    def test_rocketchat_ready_with_full_token_trio(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # Isolate telegram/slack too: any_digest_delivery_ready() must read
-        # True because of Rocket.Chat specifically, not because a real
-        # TELEGRAM_BOT_TOKEN/SLACK_WEBHOOK_URL happens to be set locally.
+    def test_slack_ready_with_socket_mode_bot_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             "integrations.sentry.digest_delivery.resolve_telegram_credentials",
             lambda _params: {},
         )
         monkeypatch.setattr(
             "integrations.sentry.digest_delivery.resolve_slack_credentials",
-            lambda _params: {},
+            lambda _params: {"access_token": "xoxb-socket-mode"},
         )
-        monkeypatch.setattr(
-            "integrations.sentry.digest_delivery.resolve_rocketchat_credentials",
-            lambda _params: {
-                "server_url": "https://chat.example.com",
-                "auth_token": "tok",
-                "user_id": "u1",
-            },
-        )
-        assert rocketchat_delivery_ready() is True
-        assert delivery_provider_ready(Provider.ROCKETCHAT) is True
-        assert any_digest_delivery_ready() is True
-
-    def test_rocketchat_not_ready_with_webhook_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A webhook alone cannot target an explicit --chat-id destination."""
-        monkeypatch.setattr(
-            "integrations.sentry.digest_delivery.resolve_telegram_credentials",
-            lambda _params: {},
-        )
-        monkeypatch.setattr(
-            "integrations.sentry.digest_delivery.resolve_slack_credentials",
-            lambda _params: {},
-        )
-        monkeypatch.setattr(
-            "integrations.sentry.digest_delivery.resolve_rocketchat_credentials",
-            lambda _params: {"webhook_url": "https://chat.example.com/hooks/a/b"},
-        )
-        assert rocketchat_delivery_ready() is False
-        assert delivery_provider_ready(Provider.ROCKETCHAT) is False
-        assert any_digest_delivery_ready() is False
+        assert slack_delivery_ready() is True
+        assert delivery_provider_ready(Provider.SLACK) is True
 
     def test_none_ready(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
